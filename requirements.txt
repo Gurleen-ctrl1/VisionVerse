@@ -1,8 +1,8 @@
-torch
-transformers
-diffusers
-gradio
-accelerate
-safetensors
-Pillow
-numpy
+torch==2.3.0
+transformers==4.43.3
+diffusers==0.30.0
+gradio==4.38.1
+accelerate==0.33.0
+safetensors==0.4.3
+Pillow==10.3.0
+numpy==1.26.4
