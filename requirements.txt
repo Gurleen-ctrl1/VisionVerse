@@ -1,4 +1,4 @@
-torch==2.3.0
+torch>=2.3.0,<2.6
 transformers==4.43.3
 diffusers==0.30.0
 gradio==4.38.1
