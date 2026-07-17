@@ -1,118 +1,364 @@
-import torch
-from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
-from transformers import BlipProcessor, BlipForConditionalGeneration
-import gradio as gr
-import os
+# 🖼️ VisionVerse: AI-Powered Image Generation & Captioning
 
-# ---------------------------
-# Load models
-# ---------------------------
-def load_models():
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    dtype = torch.float16 if device == "cuda" else torch.float32
+VisionVerse is a multimodal Generative AI application that combines **Text-to-Image Generation** and **Image Captioning** into a single interactive web application. Built using **Stable Diffusion v1.5**, **BLIP**, **PyTorch**, and **Gradio**, the application enables users to generate realistic images from natural language prompts and automatically generate descriptive captions for uploaded or generated images.
 
-    # Load Stable Diffusion
-    sd_pipe = StableDiffusionPipeline.from_pretrained(
-        "runwayml/stable-diffusion-v1-5",
-        torch_dtype=dtype
-    )
-    sd_pipe.scheduler = EulerDiscreteScheduler.from_config(sd_pipe.scheduler.config)
-    sd_pipe = sd_pipe.to(device)
+---
 
-    # Load BLIP captioning model
-    blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-    blip_model = BlipForConditionalGeneration.from_pretrained(
-        "Salesforce/blip-image-captioning-base"
-    ).to(device).eval()
+## 🚀 Features
 
-    return sd_pipe, blip_processor, blip_model, device
+- 🎨 **Text-to-Image Generation**
+  - Generate high-quality, photorealistic images using Stable Diffusion v1.5.
+  - Prompt enrichment for enhanced image quality.
+  - Negative prompting to reduce visual artifacts.
+  - Configurable inference parameters.
 
+- 🖼️ **Image Captioning**
+  - Upload an image and generate an AI-powered descriptive caption.
+  - Powered by Salesforce BLIP.
 
-# ---------------------------
-# Prompt enrichment
-# ---------------------------
-def enrich_prompt(prompt):
-    return f"A highly detailed, photorealistic image of {prompt}, 4k, vibrant lighting, cinematic atmosphere"
+- 🔄 **End-to-End AI Pipeline**
+  - Generate an image from a text prompt.
+  - Automatically caption the generated image.
+  - Demonstrates a complete multimodal AI workflow.
 
+- 💻 **Interactive Web Interface**
+  - Built using Gradio.
+  - User-friendly interface with dedicated tabs for each task.
 
-# ---------------------------
-# Image generation
-# ---------------------------
-def generate_image(prompt, sd_pipe):
-    enriched_prompt = enrich_prompt(prompt)
-    negative_prompt = (
-        "blurry, low resolution, distorted, bad anatomy, extra limbs, poorly drawn face, disfigured, mutated"
-    )
-    image = sd_pipe(
-        enriched_prompt,
-        num_inference_steps=50,
-        guidance_scale=9.0,
-        negative_prompt=negative_prompt
-    ).images[0]
-    return image
+---
 
+# 📌 Project Motivation
 
-# ---------------------------
-# Caption generation
-# ---------------------------
-def generate_caption(image, blip_processor, blip_model, device):
-    inputs = blip_processor(image, return_tensors="pt").to(device)
-    with torch.no_grad():
-        out = blip_model.generate(**inputs)
-    caption = blip_processor.decode(out[0], skip_special_tokens=True)
-    return caption
+Recent advances in Generative AI have enabled powerful models for both image generation and image understanding. However, these capabilities are often available as separate applications.
 
+VisionVerse integrates these technologies into a unified platform, allowing users to seamlessly transition between generating images and understanding visual content.
 
-# ---------------------------
-# Full pipeline: prompt → image + caption
-# ---------------------------
-def full_pipeline(prompt):
-    image = generate_image(prompt, sd_pipe)
-    caption = generate_caption(image, blip_processor, blip_model, device)
-    return image, caption
+---
 
+# 🏗️ System Architecture
 
-# ---------------------------
-# Wrapper for uploaded image captioning
-# ---------------------------
-def caption_wrapper(image):
-    return generate_caption(image, blip_processor, blip_model, device)
+```
+                    User
+                      │
+          ┌───────────┴───────────┐
+          │                       │
+          ▼                       ▼
+    Text Prompt             Upload Image
+          │                       │
+          ▼                       ▼
+ Stable Diffusion           BLIP Captioning
+(Image Generation)              Model
+          │                       │
+          ▼                       ▼
+ Generated Image          Generated Caption
+          │
+          ▼
+       BLIP Model
+          │
+          ▼
+ Caption for Generated Image
+          │
+          ▼
+       Gradio Interface
+```
 
+---
 
-# ---------------------------
-# Initialize models
-# ---------------------------
-sd_pipe, blip_processor, blip_model, device = load_models()
+# 🛠️ Tech Stack
 
+| Category | Technology |
+|----------|------------|
+| Language | Python |
+| Deep Learning | PyTorch |
+| Image Generation | Stable Diffusion v1.5 |
+| Diffusion Library | Hugging Face Diffusers |
+| Scheduler | EulerDiscreteScheduler |
+| Image Captioning | Salesforce BLIP |
+| Transformers | Hugging Face Transformers |
+| Frontend | Gradio |
+| Deployment | Render / Local |
 
-# ---------------------------
-# Gradio UI
-# ---------------------------
-with gr.Blocks() as demo:
-    gr.Markdown("## 🖼 VisionVerse: Image Generator & Captioning App")
-    gr.Markdown("Generate realistic images from text or describe uploaded images.")
+---
 
-    with gr.Tabs():
-        with gr.TabItem("1️⃣ Text → Image"):
-            with gr.Row():
-                prompt_input = gr.Textbox(label="Enter a prompt", placeholder="e.g. A cat astronaut exploring Mars")
-                generate_btn = gr.Button("Generate")
-            image_output = gr.Image(label="Generated Image", interactive=True)
-            caption_output = gr.Textbox(label="Caption")
-            generate_btn.click(fn=full_pipeline, inputs=prompt_input, outputs=[image_output, caption_output])
+# 🤖 Models Used
 
-        with gr.TabItem("2️⃣ Image → Caption"):
-            image_input = gr.Image(type="pil", label="Upload an image")
-            caption_btn = gr.Button("Generate Caption")
-            caption_result = gr.Textbox(label="Generated Caption")
-            caption_btn.click(fn=caption_wrapper, inputs=image_input, outputs=caption_result)
+## Stable Diffusion v1.5
 
+**Model**
 
-# ---------------------------
-# Launch app (Render-friendly)
-# ---------------------------
-if __name__ == "__main__":
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=int(os.environ.get("PORT", 7860))
-    )
+```
+runwayml/stable-diffusion-v1-5
+```
+
+**Purpose**
+
+Generates high-quality images from textual prompts using latent diffusion.
+
+**Components**
+
+- CLIP Text Encoder
+- U-Net
+- Variational Autoencoder (VAE)
+- Euler Scheduler
+
+---
+
+## BLIP (Bootstrapping Language-Image Pretraining)
+
+**Model**
+
+```
+Salesforce/blip-image-captioning-base
+```
+
+**Purpose**
+
+Generates natural language captions from input images by combining computer vision and transformer-based language generation.
+
+---
+
+# 🔄 Workflow
+
+## Text → Image → Caption
+
+```
+User Prompt
+      │
+      ▼
+Prompt Enrichment
+      │
+      ▼
+Stable Diffusion
+      │
+      ▼
+Generated Image
+      │
+      ▼
+BLIP Captioning
+      │
+      ▼
+Generated Caption
+```
+
+---
+
+## Image → Caption
+
+```
+Uploaded Image
+       │
+       ▼
+BLIP Processor
+       │
+       ▼
+BLIP Model
+       │
+       ▼
+Generated Caption
+```
+
+---
+
+# ✨ Prompt Engineering
+
+The application enriches user prompts before image generation to improve realism and detail.
+
+### Example
+
+**Input**
+
+```
+A tiger in a forest
+```
+
+**Enhanced Prompt**
+
+```
+A highly detailed, photorealistic image of a tiger in a forest,
+4k, vibrant lighting, cinematic atmosphere
+```
+
+This improves:
+
+- Image realism
+- Lighting
+- Detail
+- Overall visual quality
+
+---
+
+# 🚫 Negative Prompting
+
+To minimize unwanted artifacts, the following negative prompt is used:
+
+```
+blurry,
+low resolution,
+distorted,
+bad anatomy,
+extra limbs,
+poorly drawn face,
+disfigured,
+mutated
+```
+
+This guides the diffusion model away from generating undesirable outputs.
+
+---
+
+# ⚙️ Inference Configuration
+
+| Parameter | Value |
+|-----------|------:|
+| Scheduler | EulerDiscreteScheduler |
+| Inference Steps | 50 |
+| Guidance Scale | 9.0 |
+| Precision | FP16 (GPU) / FP32 (CPU) |
+
+---
+
+# 📂 Project Structure
+
+```
+VisionVerse/
+│
+├── app.py
+├── requirements.txt
+├── README.md
+├── assets/
+└── examples/
+```
+
+---
+
+# 💻 Installation
+
+Clone the repository
+
+```bash
+git clone https://github.com/yourusername/visionverse.git
+cd visionverse
+```
+
+Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# ▶️ Run the Application
+
+```bash
+python app.py
+```
+
+The application will launch locally at
+
+```
+http://localhost:7860
+```
+
+---
+
+# 📸 Example Usage
+
+## Text-to-Image
+
+**Input**
+
+```
+A futuristic city at sunset
+```
+
+**Output**
+
+- AI-generated image
+- Automatically generated caption
+
+---
+
+## Image Captioning
+
+Upload an image of a dog playing in snow.
+
+**Generated Caption**
+
+```
+A brown dog running through snow.
+```
+
+---
+
+# ⚡ Performance Optimizations
+
+- GPU acceleration using CUDA
+- Mixed precision (FP16) inference on GPU
+- Models loaded only once during startup
+- Inference mode using `.eval()`
+- Disabled gradient computation using `torch.no_grad()`
+
+---
+
+# 🚀 Future Enhancements
+
+- Image-to-Image Generation
+- Stable Diffusion XL (SDXL)
+- LoRA Fine-Tuned Models
+- Prompt History
+- User Authentication
+- Download & Share Images
+- Multiple Diffusion Schedulers
+- Batch Image Generation
+- Image Editing & Inpainting
+- Cloud Deployment with Scalable Inference
+
+---
+
+# 📚 Learning Outcomes
+
+This project provided hands-on experience with:
+
+- Generative AI
+- Diffusion Models
+- Hugging Face Diffusers
+- Vision-Language Models
+- Prompt Engineering
+- Image Captioning
+- PyTorch Inference
+- GPU Acceleration
+- Gradio Interface Development
+- Multimodal AI Systems
+
+---
+
+# 🌍 Applications
+
+VisionVerse can be applied in:
+
+- Digital Content Creation
+- Graphic Design
+- Marketing & Advertising
+- Education
+- Accessibility
+- E-commerce
+- Social Media Content Generation
+- Creative AI Research
+
+---
+
+# 🙏 Acknowledgements
+
+- Hugging Face Diffusers
+- Hugging Face Transformers
+- Stable Diffusion v1.5 (RunwayML)
+- Salesforce BLIP
+- PyTorch
+- Gradio
+
+---
+
+# 📄 License
+
+This project is intended for educational and research purposes. Please ensure compliance with the licenses of all pretrained models and libraries used.
